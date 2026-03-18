@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-
 namespace Valuator;
 
 public class Program
