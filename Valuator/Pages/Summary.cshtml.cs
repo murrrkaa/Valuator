@@ -19,16 +19,28 @@ public class SummaryModel : PageModel
         _redis = redis;
     }
 
-    public double Rank { get; set; }
-    public double Similarity { get; set; }
+    public double? Rank { get; set; }
+    public double? Similarity { get; set; }
+    public string? StatusMessage { get; set; }
 
     public void OnGet(string id)
     {
         _logger.LogDebug(id);
         var db = _redis.GetDatabase();
 
-        Rank = (double)db.StringGet("RANK-" + id);
-        Similarity = (int)db.StringGet("SIMILARITY-" + id);
-        // TODO: (pa1) проинициализировать свойства Rank и Similarity значениями из БД (Redis)
+        var rankValue = db.StringGet("RANK-" + id);
+        var similarityValue = db.StringGet("SIMILARITY-" + id);
+
+        if (rankValue.IsNull)
+        {
+            StatusMessage = "Оценка содержания не завершена";
+            Rank = null;
+            Similarity = null;
+        }
+        else
+        {
+            Rank = Convert.ToDouble(rankValue.ToString().Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
+            Similarity = (double)similarityValue;
+        }
     }
 }

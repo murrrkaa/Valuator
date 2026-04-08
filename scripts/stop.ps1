@@ -13,7 +13,14 @@ foreach ($port in $ports)
     }
 }
 
+$rankProcs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*RankCalculator*" }
+foreach ($p in $rankProcs) {
+    Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+    Write-Host "Stopped RankCalculator process (PID: $($p.ProcessId))" -ForegroundColor Gray
+}
+
 docker stop valuator-redis
 
 
 start-process "nginx.exe" "-s stop" -WorkingDirectory "C:\nginx\"
+& "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmqctl.bat" stop
