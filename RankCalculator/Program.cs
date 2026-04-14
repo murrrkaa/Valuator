@@ -3,56 +3,75 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
 
-var redis = ConnectionMultiplexer.Connect("localhost:6379");
-var db = redis.GetDatabase();
-
-var factory = new ConnectionFactory { HostName = "localhost" };
-
-using var connection = await factory.CreateConnectionAsync();
-using var channel = await connection.CreateChannelAsync();
-
-await channel.QueueDeclareAsync(queue: "rank_tasks", durable: false, exclusive: false, autoDelete: false, arguments: null);
-
-await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-
-var consumer = new AsyncEventingBasicConsumer(channel);
-consumer.ReceivedAsync += async (model, ea) =>
+class Program
 {
-    try
+
+    private const string QueueName = "valuator.processing.rank";
+
+    static async Task Main(string[] args)
     {
-        var body = ea.Body.ToArray();
-        var id = Encoding.UTF8.GetString(body);
 
-        //await Task.Delay(5000);
-        var textRedis = await db.StringGetAsync("TEXT-" + id);
+        var redis = ConnectionMultiplexer.Connect("localhost:6379");
+        var db = redis.GetDatabase();
 
-        if (!textRedis.IsNull)
+        var factory = new ConnectionFactory { HostName = "localhost" };
+
+        using var connection = await factory.CreateConnectionAsync();
+        using var channel = await connection.CreateChannelAsync();
+
+        await DeclareTopologyAsync(channel);
+
+        await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += async (model, ea) =>
         {
-            string text = textRedis.ToString();
+            try
+            {
+                var body = ea.Body.ToArray();
+                var id = Encoding.UTF8.GetString(body);
 
-            int nonLetterCount = text.Count(c => !char.IsLetter(c));
-            double rank = (double)nonLetterCount / text.Length;
+                var textRedis = await db.StringGetAsync("TEXT-" + id);
 
-            string setKey = "TEXTS_SET";
+                if (!textRedis.IsNull)
+                {
+                    string text = textRedis.ToString();
 
-            bool isNew = await db.SetAddAsync(setKey, text);
-            int similarity = isNew ? 0 : 1;
+                    int nonLetterCount = text.Count(c => !char.IsLetter(c));
+                    double rank = (double)nonLetterCount / text.Length;
 
-            await db.StringSetAsync("RANK-" + id, rank.ToString());
-            await db.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
-        }
-        else
-        {
-            Console.WriteLine($"Текст для ID {id} не найден в базе.");
-        }
+                    string setKey = "TEXTS_SET";
 
-        await channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
+                    bool isNew = await db.SetAddAsync(setKey, text);
+                    int similarity = isNew ? 0 : 1;
+
+                    await db.StringSetAsync("RANK-" + id, rank.ToString());
+                    await db.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
+                }
+                else
+                {
+                    Console.WriteLine($"Текст для ID {id} не найден в базе.");
+                }
+
+                await channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Произошла ошибка: {e.Message}");
+            }
+        };
+
+        await channel.BasicConsumeAsync(queue: QueueName, autoAck: false, consumer: consumer);
+        await Task.Delay(Timeout.Infinite);
     }
-    catch (Exception e)
+
+    private static async Task DeclareTopologyAsync(IChannel channel)
     {
-        Console.WriteLine($"Произошла ошибка: {e.Message}");
+        await channel.QueueDeclareAsync(
+            queue: QueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false
+        );
     }
-};
-
-await channel.BasicConsumeAsync(queue: "rank_tasks", autoAck: false, consumer: consumer);
-await Task.Delay(Timeout.Infinite);
+}

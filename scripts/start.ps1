@@ -5,6 +5,17 @@ start-process "nginx.exe" -WorkingDirectory "C:\nginx\"
 
 docker start valuator-redis
 
+Write-Host "Waiting for Redis to start..." -ForegroundColor Yellow
+while ($true) {
+    $redisCheck = Test-NetConnection -ComputerName localhost -Port 6379 -InformationLevel Quiet
+    if ($redisCheck) { 
+        Write-Host "Redis is READY!" -ForegroundColor Green
+        break 
+    }
+    Write-Host "." -NoNewline
+    Start-Sleep -Seconds 1
+}
+
 Write-Host "Starting RabbitMQ Server..." -ForegroundColor Cyan
 start-process "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmq-server.bat"
 Write-Host "Waiting for RabbitMQ to start..." -ForegroundColor Yellow

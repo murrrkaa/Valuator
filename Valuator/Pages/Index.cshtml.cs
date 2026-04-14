@@ -8,6 +8,10 @@ namespace Valuator.Pages;
 
 public class IndexModel : PageModel
 {
+    private const string ExchangeName = "valuator.processing.rank";
+    private const string QueueName = "valuator.processing.rank";
+    private const string RoutingKey = "valuator.processing.rank";
+
     private readonly ILogger<IndexModel> _logger;
     private readonly IConnectionMultiplexer _redis;
     private readonly IConnectionFactory _rabbitFactory;
@@ -39,14 +43,40 @@ public class IndexModel : PageModel
         string textKey = "TEXT-" + id;
         db.StringSet(textKey, text);
 
-        using (var connection = await _rabbitFactory.CreateConnectionAsync())
-        using (var channel = await connection.CreateChannelAsync())
-        {
-            await channel.QueueDeclareAsync(queue: "rank_tasks", durable: false, exclusive: false, autoDelete: false);
-            var body = Encoding.UTF8.GetBytes(id);
-            await channel.BasicPublishAsync(string.Empty, "rank_tasks", body);
-        }
+        using var connection = await _rabbitFactory.CreateConnectionAsync();
+        using var channel = await connection.CreateChannelAsync();
+
+        await DeclareTopologyAsync(channel);
+
+        var body = Encoding.UTF8.GetBytes(id);
+
+        await channel.BasicPublishAsync(
+            exchange: ExchangeName,
+            routingKey: RoutingKey,
+            body: body
+         );
 
         return Redirect($"summary?id={id}");
+    }
+
+    private async Task DeclareTopologyAsync(IChannel channel)
+    {
+        await channel.ExchangeDeclareAsync(
+           exchange: ExchangeName,
+           type: ExchangeType.Direct
+        );
+
+        await channel.QueueDeclareAsync(
+            queue: QueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false
+        );
+
+        await channel.QueueBindAsync(
+            queue: QueueName,
+            exchange: ExchangeName,
+            routingKey: RoutingKey
+        );
     }
 }
