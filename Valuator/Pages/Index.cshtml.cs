@@ -1,15 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using StackExchange.Redis;
+using RabbitMQ.Client;
+using System.Text;
 
 namespace Valuator.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
+    private const string ExchangeName = "valuator.processing.rank";
+    private const string QueueName = "valuator.processing.rank";
+    private const string RoutingKey = "valuator.processing.rank";
 
-    public IndexModel(ILogger<IndexModel> logger)
+    private readonly ILogger<IndexModel> _logger;
+    private readonly IConnectionMultiplexer _redis;
+    private readonly IConnectionFactory _rabbitFactory;
+
+    public IndexModel(ILogger<IndexModel> logger, IConnectionMultiplexer redis, IConnectionFactory rabbitFactory)
     {
         _logger = logger;
+        _redis = redis;
+        _rabbitFactory = rabbitFactory;
     }
 
     public void OnGet()
@@ -17,21 +28,55 @@ public class IndexModel : PageModel
 
     }
 
-    public IActionResult OnPost(string text)
+    public async Task<IActionResult> OnPost(string text)
     {
         _logger.LogDebug(text);
 
+        if (string.IsNullOrEmpty(text))
+        {
+            return RedirectToPage("Index");
+        }
+
         string id = Guid.NewGuid().ToString();
+        var db = _redis.GetDatabase();
 
         string textKey = "TEXT-" + id;
-        // TODO: (pa1) сохранить в БД (Redis) text по ключу textKey
+        db.StringSet(textKey, text);
 
-        string rankKey = "RANK-" + id;
-        // TODO: (pa1) посчитать rank и сохранить в БД (Redis) по ключу rankKey
+        using var connection = await _rabbitFactory.CreateConnectionAsync();
+        using var channel = await connection.CreateChannelAsync();
 
-        string similarityKey = "SIMILARITY-" + id;
-        // TODO: (pa1) посчитать similarity и сохранить в БД (Redis) по ключу similarityKey
+        await DeclareTopologyAsync(channel);
+
+        var body = Encoding.UTF8.GetBytes(id);
+
+        await channel.BasicPublishAsync(
+            exchange: ExchangeName,
+            routingKey: RoutingKey,
+            body: body
+         );
 
         return Redirect($"summary?id={id}");
+    }
+
+    private async Task DeclareTopologyAsync(IChannel channel)
+    {
+        await channel.ExchangeDeclareAsync(
+           exchange: ExchangeName,
+           type: ExchangeType.Direct
+        );
+
+        await channel.QueueDeclareAsync(
+            queue: QueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false
+        );
+
+        await channel.QueueBindAsync(
+            queue: QueueName,
+            exchange: ExchangeName,
+            routingKey: RoutingKey
+        );
     }
 }
