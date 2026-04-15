@@ -8,7 +8,8 @@ namespace Valuator.Pages;
 
 public class IndexModel : PageModel
 {
-    private const string ExchangeName = "valuator.processing.rank";
+    private const string ExchangeNameRank = "valuator.processing.rank";
+    private const string ExchangeNameEvents = "valuator.processing.events";
     private const string QueueName = "valuator.processing.rank";
     private const string RoutingKey = "valuator.processing.rank";
 
@@ -40,18 +41,35 @@ public class IndexModel : PageModel
         string id = Guid.NewGuid().ToString();
         var db = _redis.GetDatabase();
 
+        string setKey = "TEXTS_SET";
+
+        bool isNew = await db.SetAddAsync(setKey, text);
+        int similarity = isNew ? 0 : 1;
+
+        await db.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
+
         string textKey = "TEXT-" + id;
-        db.StringSet(textKey, text);
+        await db.StringSetAsync(textKey, text);
 
         using var connection = await _rabbitFactory.CreateConnectionAsync();
         using var channel = await connection.CreateChannelAsync();
 
         await DeclareTopologyAsync(channel);
 
+        string eventMessage = $"[SimilarityCalculated] ID: {id}, Value: {similarity}";
+        var eventBody = Encoding.UTF8.GetBytes(eventMessage);
+
+        await channel.BasicPublishAsync(
+            exchange: ExchangeNameEvents,
+            routingKey: "",
+            body: eventBody
+        );
+
+
         var body = Encoding.UTF8.GetBytes(id);
 
         await channel.BasicPublishAsync(
-            exchange: ExchangeName,
+            exchange: ExchangeNameRank,
             routingKey: RoutingKey,
             body: body
          );
@@ -62,8 +80,13 @@ public class IndexModel : PageModel
     private async Task DeclareTopologyAsync(IChannel channel)
     {
         await channel.ExchangeDeclareAsync(
-           exchange: ExchangeName,
+           exchange: ExchangeNameRank,
            type: ExchangeType.Direct
+        );
+
+        await channel.ExchangeDeclareAsync(
+            exchange: ExchangeNameEvents,
+            type: ExchangeType.Fanout
         );
 
         await channel.QueueDeclareAsync(
@@ -75,7 +98,7 @@ public class IndexModel : PageModel
 
         await channel.QueueBindAsync(
             queue: QueueName,
-            exchange: ExchangeName,
+            exchange: ExchangeNameRank,
             routingKey: RoutingKey
         );
     }

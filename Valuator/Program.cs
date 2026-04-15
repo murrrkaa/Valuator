@@ -1,7 +1,6 @@
 namespace Valuator;
 using RabbitMQ.Client;
 using StackExchange.Redis;
-namespace Valuator;
 using RabbitMQ.Client;
 
 public class Program

@@ -5,8 +5,8 @@ using StackExchange.Redis;
 
 class Program
 {
-
     private const string QueueName = "valuator.processing.rank";
+    private const string ExchangeNameEvents = "valuator.processing.events";
 
     static async Task Main(string[] args)
     {
@@ -40,13 +40,22 @@ class Program
                     int nonLetterCount = text.Count(c => !char.IsLetter(c));
                     double rank = (double)nonLetterCount / text.Length;
 
-                    string setKey = "TEXTS_SET";
-
-                    bool isNew = await db.SetAddAsync(setKey, text);
-                    int similarity = isNew ? 0 : 1;
-
                     await db.StringSetAsync("RANK-" + id, rank.ToString());
-                    await db.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
+
+                    await channel.ExchangeDeclareAsync(
+                        exchange: ExchangeNameEvents,
+                        type: ExchangeType.Fanout
+                    );
+
+                    string rankEvent = $"[RankCalculated] ID: {id}, Value: {rank}";
+                    var rankBody = Encoding.UTF8.GetBytes(rankEvent);
+
+                    await channel.BasicPublishAsync(
+                        exchange: ExchangeNameEvents,
+                        routingKey: "",
+                        body: rankBody
+                    );
+
                 }
                 else
                 {

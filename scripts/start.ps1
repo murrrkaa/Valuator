@@ -31,7 +31,15 @@ while ($true) {
 
 for ($i = 1; $i -le $workerCount; $i++) {
     Start-Process dotnet -ArgumentList "run" -WorkingDirectory "$PSScriptRoot\..\RankCalculator"
-} 
+}
+
+
+$loggerCount = 2
+for ($i = 1; $i -le $loggerCount; $i++) {
+    Write-Host "Starting EventsLogger Instance $i..." -ForegroundColor Magenta
+    Start-Process dotnet -ArgumentList "run" -WorkingDirectory "$PSScriptRoot\..\EventsLogger"
+
+}
 
 foreach ($port in $ports) 
 {

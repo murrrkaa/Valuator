@@ -19,6 +19,12 @@ foreach ($p in $rankProcs) {
     Write-Host "Stopped RankCalculator process (PID: $($p.ProcessId))" -ForegroundColor Gray
 }
 
+$loggerProcs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*EventsLogger*" }
+foreach ($l in $loggerProcs) {
+    Stop-Process -Id $l.ProcessId -Force -ErrorAction SilentlyContinue
+    Write-Host "Stopped EventsLogger process (PID: $($l.ProcessId))" -ForegroundColor Gray
+}
+
 docker stop valuator-redis
 
 
