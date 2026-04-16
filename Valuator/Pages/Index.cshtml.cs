@@ -65,7 +65,6 @@ public class IndexModel : PageModel
             body: eventBody
         );
 
-
         var body = Encoding.UTF8.GetBytes(id);
 
         await channel.BasicPublishAsync(

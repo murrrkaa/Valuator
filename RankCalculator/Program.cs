@@ -42,11 +42,6 @@ class Program
 
                     await db.StringSetAsync("RANK-" + id, rank.ToString());
 
-                    await channel.ExchangeDeclareAsync(
-                        exchange: ExchangeNameEvents,
-                        type: ExchangeType.Fanout
-                    );
-
                     string rankEvent = $"[RankCalculated] ID: {id}, Value: {rank}";
                     var rankBody = Encoding.UTF8.GetBytes(rankEvent);
 
@@ -55,7 +50,6 @@ class Program
                         routingKey: "",
                         body: rankBody
                     );
-
                 }
                 else
                 {
@@ -76,6 +70,11 @@ class Program
 
     private static async Task DeclareTopologyAsync(IChannel channel)
     {
+        await channel.ExchangeDeclareAsync(
+            exchange: ExchangeNameEvents,
+            type: ExchangeType.Fanout
+        );
+
         await channel.QueueDeclareAsync(
             queue: QueueName,
             durable: true,
