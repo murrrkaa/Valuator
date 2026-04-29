@@ -1,7 +1,8 @@
 namespace Valuator;
 using RabbitMQ.Client;
 using StackExchange.Redis;
-using RabbitMQ.Client;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 
 public class Program
 {
@@ -15,6 +16,11 @@ public class Program
         builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>
             ConnectionMultiplexer.Connect("localhost:6379"));
         builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { HostName = "localhost" });
+        builder.Services.AddSignalR()
+            .AddStackExchangeRedis("localhost:6379", options => {
+                    options.Configuration.ChannelPrefix = "Valuator_SignalR_Backplane";
+                });
+        builder.Services.AddHostedService<RankNotifier>();
 
         var app = builder.Build();
 
@@ -28,6 +34,8 @@ public class Program
         app.UseRouting();
 
         app.UseAuthorization();
+
+        app.MapHub<RankHub>("/rankHub");
 
         app.MapRazorPages();
 

@@ -5,10 +5,48 @@
 
 @if (!string.IsNullOrEmpty(Model.StatusMessage))
 {
-    <p>@Model.StatusMessage</p>
+    <p id="status-message">@Model.StatusMessage</p>
+
+    <p id="rank-container" style="display:none">Оценка содержания: <span id="rank-value"></span></p>
+    <p id="similarity-container" style="display:none">Плагиат: <span id="similarity-value"></span></p>
 }
 else
 {
     <p>Оценка содержания: @Model.Rank</p>
     <p>Плагиат: @Model.Similarity</p>
 }
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/rankHub")
+        .build();
+
+        connection.on("Receive", function (id, rank, similarity) {
+        if (id === "@Model.TextId") {
+            const statusLabel = document.getElementById("status-message");
+            
+            if (statusLabel) {
+                statusLabel.style.display = "none";
+
+                const rankValue = document.getElementById("rank-value");
+                const simValue = document.getElementById("similarity-value");
+                
+                rankValue.innerText = rank;
+                simValue.innerText = similarity;
+
+                document.getElementById("rank-container").style.display = "block";
+                document.getElementById("similarity-container").style.display = "block";
+            }
+        }
+    });
+
+    connection.start()
+        .then(function () {
+            connection.invoke("Send", "@Model.TextId");
+        })
+        .catch(function (err) {
+            return console.error(err.toString());
+        });
+</script>}

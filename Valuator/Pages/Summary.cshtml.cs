@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Valuator.Pages;
 public class SummaryModel : PageModel
@@ -22,9 +23,11 @@ public class SummaryModel : PageModel
     public double? Rank { get; set; }
     public double? Similarity { get; set; }
     public string? StatusMessage { get; set; }
+    public string? TextId { get; set; }
 
     public void OnGet(string id)
     {
+        TextId = id;
         _logger.LogDebug(id);
 
         var db = _redis.GetDatabase();

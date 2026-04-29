@@ -7,6 +7,7 @@ class Program
 {
     private const string QueueName = "valuator.processing.rank";
     private const string ExchangeNameEvents = "valuator.processing.events";
+    private const string ExchangeNameNotification = "valuator.processing.notification";
 
     static async Task Main(string[] args)
     {
@@ -37,6 +38,10 @@ class Program
                 {
                     string text = textRedis.ToString();
 
+                    TimeSpan interval = TimeSpan.FromSeconds(new Random().Next(3, 15));
+                    Console.WriteLine($"Waiting {interval}");
+                    await Task.Delay(interval);
+
                     int nonLetterCount = text.Count(c => !char.IsLetter(c));
                     double rank = (double)nonLetterCount / text.Length;
 
@@ -50,6 +55,9 @@ class Program
                         routingKey: "",
                         body: rankBody
                     );
+
+                    var notifyBody = Encoding.UTF8.GetBytes(id);
+                    await channel.BasicPublishAsync(exchange: ExchangeNameNotification, routingKey: "", body: notifyBody);
                 }
                 else
                 {
@@ -81,5 +89,7 @@ class Program
             exclusive: false,
             autoDelete: false
         );
+
+        await channel.ExchangeDeclareAsync(exchange: ExchangeNameNotification, type: ExchangeType.Fanout);
     }
 }
