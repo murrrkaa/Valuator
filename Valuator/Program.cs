@@ -2,6 +2,7 @@ namespace Valuator;
 using RabbitMQ.Client;
 using StackExchange.Redis;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 public class Program
 {
@@ -15,6 +16,19 @@ public class Program
     {
 
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/Login";
+                options.AccessDeniedPath = "/Forbidden";
+            });
+
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AuthorOnly", policy => policy.RequireAuthenticatedUser());
+        });
+
 
         string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
         string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
@@ -54,6 +68,7 @@ public class Program
         }
         app.UseStaticFiles();
         app.UseRouting();
+        app.UseAuthentication();
         app.UseAuthorization();
         app.MapHub<RankHub>("/rankHub");
         app.MapRazorPages();

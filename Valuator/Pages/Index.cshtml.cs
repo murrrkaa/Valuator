@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using StackExchange.Redis;
 using RabbitMQ.Client;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Valuator.Pages;
 
+[Authorize]
 public class IndexModel : PageModel
 {
     private const string ExchangeNameRank = "valuator.processing.rank";
@@ -45,7 +47,10 @@ public class IndexModel : PageModel
         string id = Guid.NewGuid().ToString();
         string region = GetRegion(country);
 
+        string author = User.Identity.Name;
+
         var dbMain = _redis.GetDatabase();
+        await dbMain.StringSetAsync("AUTHOR-" + id, author);
         await dbMain.StringSetAsync(id, region);
         var dbRegion = _regionProvider.GetDatabase(region);
 

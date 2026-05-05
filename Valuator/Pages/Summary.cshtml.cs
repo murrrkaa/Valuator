@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,8 @@ using StackExchange.Redis;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Valuator.Pages;
+
+[Authorize]
 public class SummaryModel : PageModel
 {
     private readonly ILogger<SummaryModel> _logger;
@@ -27,19 +30,27 @@ public class SummaryModel : PageModel
     public string? StatusMessage { get; set; }
     public string? TextId { get; set; }
 
-    public async Task OnGet(string id)
+    public async Task<IActionResult> OnGet(string id)
     {
         TextId = id;
         _logger.LogDebug(id);
 
         var dbMain = _redis.GetDatabase();
+
+        string author = await dbMain.StringGetAsync("AUTHOR-" + id);
+
+        if (string.IsNullOrEmpty(author) || author != User.Identity.Name)
+        {
+            return Forbid();
+        }
+
         string region = await dbMain.StringGetAsync(id);
         Console.WriteLine($"LOOKUP: {id}, {region}");
 
         if (string.IsNullOrEmpty(region))
         {
             StatusMessage = "Запись не найдена";
-            return;
+            return Page();
         }
         var dbRegion = _regionProvider.GetDatabase(region);
 
@@ -57,5 +68,7 @@ public class SummaryModel : PageModel
             Rank = Convert.ToDouble(rankValue.ToString().Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
             Similarity = (double)similarityValue;
         }
+
+        return Page();
     }
 }
