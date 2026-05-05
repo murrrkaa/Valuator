@@ -2,7 +2,6 @@
 bin/
 obj/
 
-/.vscode/
-/.idea/
-
 *.DotSettings.user
+.vscode/
+.idea/

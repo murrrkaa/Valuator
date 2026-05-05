@@ -50,7 +50,6 @@ class Program
                 body: messageData,
                 cancellationToken: ct
             );
-
             await Task.Delay(TimeSpan.FromSeconds(1), ct);
             ++count;
         }

@@ -11,7 +11,6 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddRazorPages();
-
         builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>
             ConnectionMultiplexer.Connect("localhost:6379"));
         builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { HostName = "localhost" });
