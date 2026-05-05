@@ -50,7 +50,9 @@ class Program
                 body: messageData,
                 cancellationToken: ct
             );
-            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            TimeSpan interval = TimeSpan.FromSeconds(new Random().Next(3, 15));
+            Console.WriteLine($"Waiting {interval}");
+            await Task.Delay(interval, ct);
             ++count;
         }
 
