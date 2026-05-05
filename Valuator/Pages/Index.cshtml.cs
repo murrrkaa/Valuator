@@ -15,13 +15,19 @@ public class IndexModel : PageModel
 
     private readonly ILogger<IndexModel> _logger;
     private readonly IConnectionMultiplexer _redis;
-    private readonly IConnectionFactory _rabbitFactory;
+    private readonly IConnection _rabbitConnection;
+    private readonly IRegionDBProvider _regionProvider;
 
-    public IndexModel(ILogger<IndexModel> logger, IConnectionMultiplexer redis, IConnectionFactory rabbitFactory)
+    public IndexModel(
+    ILogger<IndexModel> logger,
+    IConnectionMultiplexer redis,
+    IConnection rabbitConnection,
+    IRegionDBProvider regionProvider)
     {
         _logger = logger;
         _redis = redis;
-        _rabbitFactory = rabbitFactory;
+        _rabbitConnection = rabbitConnection;
+        _regionProvider = regionProvider;
     }
 
     public void OnGet()
@@ -29,32 +35,31 @@ public class IndexModel : PageModel
 
     }
 
-    public async Task<IActionResult> OnPost(string text)
+    public async Task<IActionResult> OnPost(string text, string country)
     {
         _logger.LogDebug(text);
-
-        if (string.IsNullOrEmpty(text))
+        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(country))
         {
             return RedirectToPage("Index");
         }
-
         string id = Guid.NewGuid().ToString();
-        var db = _redis.GetDatabase();
+        string region = GetRegion(country);
+
+        var dbMain = _redis.GetDatabase();
+        await dbMain.StringSetAsync(id, region);
+        var dbRegion = _regionProvider.GetDatabase(region);
 
         string setKey = "TEXTS_SET";
 
-        bool isNew = await db.SetAddAsync(setKey, text);
+        bool isNew = await dbRegion.SetAddAsync(setKey, text);
         int similarity = isNew ? 0 : 1;
 
-        await db.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
+        await dbRegion.StringSetAsync("SIMILARITY-" + id, similarity.ToString());
 
         string textKey = "TEXT-" + id;
-        await db.StringSetAsync(textKey, text);
+        await dbRegion.StringSetAsync(textKey, text);
 
-        using var connection = await _rabbitFactory.CreateConnectionAsync();
-        using var channel = await connection.CreateChannelAsync();
-
-        await DeclareTopologyAsync(channel);
+        using var channel = await _rabbitConnection.CreateChannelAsync();
 
         string eventMessage = $"[SimilarityCalculated] ID: {id}, Value: {similarity}";
         var eventBody = Encoding.UTF8.GetBytes(eventMessage);
@@ -76,29 +81,13 @@ public class IndexModel : PageModel
         return Redirect($"summary?id={id}");
     }
 
-    private async Task DeclareTopologyAsync(IChannel channel)
+    private static string GetRegion(string country) => country switch
     {
-        await channel.ExchangeDeclareAsync(
-           exchange: ExchangeNameRank,
-           type: ExchangeType.Direct
-        );
-
-        await channel.ExchangeDeclareAsync(
-            exchange: ExchangeNameEvents,
-            type: ExchangeType.Fanout
-        );
-
-        await channel.QueueDeclareAsync(
-            queue: QueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false
-        );
-
-        await channel.QueueBindAsync(
-            queue: QueueName,
-            exchange: ExchangeNameRank,
-            routingKey: RoutingKey
-        );
-    }
+        "Russia" => "RU",
+        "France" => "EU",
+        "Germany" => "EU",
+        "UAE" => "ASIA",
+        "India" => "ASIA",
+        _ => throw new ArgumentException($"Unknown country: {country}")
+    };
 }

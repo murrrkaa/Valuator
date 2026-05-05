@@ -26,7 +26,10 @@ foreach ($l in $loggerProcs) {
 }
 
 docker stop valuator-redis
-
+docker stop db-main
+docker stop db-ru
+docker stop db-eu
+docker stop db-asia
 
 start-process "nginx.exe" "-s stop" -WorkingDirectory "C:\nginx\"
 & "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmqctl.bat" stop

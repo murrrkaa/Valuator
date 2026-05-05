@@ -4,6 +4,10 @@ $workerCount = 2
 start-process "nginx.exe" -WorkingDirectory "C:\nginx\"
 
 docker start valuator-redis
+docker start db-main
+docker start db-ru
+docker start db-eu
+docker start db-asia
 
 Write-Host "Waiting for Redis to start..." -ForegroundColor Yellow
 while ($true) {
