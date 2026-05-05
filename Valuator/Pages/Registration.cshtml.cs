@@ -29,7 +29,7 @@ namespace Valuator.Pages
             string userKey = $"USER:{login}";
             if (await _db.KeyExistsAsync(userKey))
             {
-                ModelState.AddModelError("", "Этот логин уже занят. Выберите другой.");
+                ModelState.AddModelError("", "Этот логин уже занят.");
                 return Page();
             }
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
