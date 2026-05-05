@@ -59,7 +59,5 @@ public class Program
         await channel.QueueBindAsync(QueueName, ExchangeNameRank, RoutingKey);
         await channel.ExchangeDeclareAsync(ExchangeNameEvents, ExchangeType.Fanout);
         await channel.ExchangeDeclareAsync(ExchangeNameNotification, ExchangeType.Fanout);
-
-        Console.WriteLine(">>> RabbitMQ Topology initialized.");
     }
 }
