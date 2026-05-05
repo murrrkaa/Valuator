@@ -16,15 +16,25 @@ public class Program
 
         var builder = WebApplication.CreateBuilder(args);
 
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
+        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+
         builder.Services.AddRazorPages();
         builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>
         {
-            var dbMain = Environment.GetEnvironmentVariable("DB_MAIN") ?? "localhost:6000";
-            return ConnectionMultiplexer.Connect(dbMain);
+            var dbMain = Environment.GetEnvironmentVariable("DB_MAIN");
+            var config = ConfigurationOptions.Parse(dbMain);
+            config.Password = redisPassword;
+
+            return ConnectionMultiplexer.Connect(config);
         });
 
         builder.Services.AddSingleton<IRegionDBProvider, RegionDBProvider>();
-        var factory = new ConnectionFactory { HostName = "localhost" };
+        var factory = new ConnectionFactory { HostName = "localhost",
+            UserName = rabbitUser,
+            Password = rabbitPassword
+        };
 
         var rabbitConnection = await factory.CreateConnectionAsync();
 

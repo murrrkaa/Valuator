@@ -3,15 +3,19 @@ $workerCount = 2
 
 start-process "nginx.exe" -WorkingDirectory "C:\nginx\"
 
-docker start valuator-redis
-docker start db-main
-docker start db-ru
-docker start db-eu
-docker start db-asia
+docker start db-main db-ru db-eu db-asia
+
+Start-Sleep -Seconds 2
+
+Write-Host "Setting passwords for Redis containers..." -ForegroundColor Yellow
+$redisContainers = @("db-main", "db-ru", "db-eu", "db-asia")
+foreach ($container in $redisContainers) {
+    docker exec $container redis-cli CONFIG SET requirepass redis_admin
+}
 
 Write-Host "Waiting for Redis to start..." -ForegroundColor Yellow
 while ($true) {
-    $redisCheck = Test-NetConnection -ComputerName localhost -Port 6379 -InformationLevel Quiet
+    $redisCheck = Test-NetConnection -ComputerName localhost -Port 6000 -InformationLevel Quiet
     if ($redisCheck) { 
         Write-Host "Redis is READY!" -ForegroundColor Green
         break 
@@ -27,8 +31,15 @@ while ($true) {
     $connection = Test-NetConnection -ComputerName localhost -Port 5672 -InformationLevel Quiet
     if ($connection) { 
         Write-Host "RabbitMQ is READY!" -ForegroundColor Green
+        $ctl = "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmqctl.bat"
+
+        Write-Host "Configuring RabbitMQ credentials..." -ForegroundColor Yellow
+    
+        & $ctl add_user "rabbit_admin" "rabbit_admin" 2>$null
+        & $ctl set_user_tags "rabbit_admin" administrator
+        & $ctl set_permissions -p "/" "rabbit_admin" ".*" ".*" ".*"
         break 
-    }
+}
     Write-Host "." -NoNewline
     Start-Sleep -Seconds 2
 }

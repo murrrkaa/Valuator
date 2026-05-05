@@ -14,14 +14,26 @@ public class RegionDBProvider : IRegionDBProvider
 
     public RegionDBProvider()
     {
-        _connections["RU"] = ConnectionMultiplexer.Connect(
-            Environment.GetEnvironmentVariable("DB_RU"));
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
 
-        _connections["EU"] = ConnectionMultiplexer.Connect(
-            Environment.GetEnvironmentVariable("DB_EU"));
+        var regionConfigs = new Dictionary<string, string>
+        {
+            { "RU", "DB_RU" },
+            { "EU", "DB_EU" },
+            { "ASIA", "DB_ASIA" }
+        };
 
-        _connections["ASIA"] = ConnectionMultiplexer.Connect(
-            Environment.GetEnvironmentVariable("DB_ASIA"));
+        foreach (var config in regionConfigs)
+        {
+            string host = Environment.GetEnvironmentVariable(config.Value);
+
+            if (!string.IsNullOrEmpty(host))
+            {
+                var options = ConfigurationOptions.Parse(host);
+                options.Password = redisPassword;
+                _connections[config.Key] = ConnectionMultiplexer.Connect(options);
+            }
+        }
     }
 
     public IDatabase GetDatabase(string region)

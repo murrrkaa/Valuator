@@ -11,7 +11,14 @@ class Program
     static async Task Main(string[] args)
     {
         Console.Title = "EVENTS_LOGGER";
-        var factory = new ConnectionFactory { HostName = "localhost" };
+
+        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
+        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+
+        var factory = new ConnectionFactory { HostName = "localhost",
+            UserName = rabbitUser,
+            Password = rabbitPassword
+        };
 
         await using var connection = await factory.CreateConnectionAsync();
         await using var channel = await connection.CreateChannelAsync();

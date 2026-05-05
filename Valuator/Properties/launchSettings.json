@@ -11,7 +11,10 @@
         "DB_MAIN": "localhost:6000",
         "DB_RU": "localhost:6001",
         "DB_EU": "localhost:6002",
-        "DB_ASIA": "localhost:6003"
+        "DB_ASIA": "localhost:6003",
+        "REDIS_PASSWORD": "redis_admin",
+        "RABBIT_USER": "rabbit_admin",
+        "RABBIT_PASSWORD": "rabbit_admin"
       }
     }
   }

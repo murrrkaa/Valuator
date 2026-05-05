@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "EventsLogger": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "RABBIT_USER": "rabbit_admin",
+        "RABBIT_PASSWORD": "rabbit_admin"
+      }
+    }
+  }
+}

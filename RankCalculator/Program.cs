@@ -12,18 +12,35 @@ class Program
     static async Task Main(string[] args)
     {
         Console.Title = "RANK_CALCULATOR";
-        var mainAddr = Environment.GetEnvironmentVariable("DB_MAIN");
-        var redis = ConnectionMultiplexer.Connect(mainAddr);
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
+        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+
+        ConfigurationOptions GetRedisOptions(string envVarName)
+        {
+            return new ConfigurationOptions
+            {
+                EndPoints = { Environment.GetEnvironmentVariable(envVarName) },
+                Password = redisPassword,
+            };
+        }
+
+        var redis = ConnectionMultiplexer.Connect(GetRedisOptions("DB_MAIN"));
         var dbMain = redis.GetDatabase();
 
         var regionDbs = new Dictionary<string, IDatabase>
         {
-            ["RU"] = ConnectionMultiplexer.Connect(Environment.GetEnvironmentVariable("DB_RU")).GetDatabase(),
-            ["EU"] = ConnectionMultiplexer.Connect(Environment.GetEnvironmentVariable("DB_EU")).GetDatabase(),
-            ["ASIA"] = ConnectionMultiplexer.Connect(Environment.GetEnvironmentVariable("DB_ASIA")).GetDatabase(),
+            ["RU"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_RU")).GetDatabase(),
+            ["EU"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_EU")).GetDatabase(),
+            ["ASIA"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_ASIA")).GetDatabase(),
         };
 
-        var factory = new ConnectionFactory { HostName = "localhost" };
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = rabbitUser,
+            Password = rabbitPassword
+        };
 
         using var connection = await factory.CreateConnectionAsync();
         using var channel = await connection.CreateChannelAsync();
