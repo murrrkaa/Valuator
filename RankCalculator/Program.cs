@@ -12,37 +12,9 @@ class Program
     static async Task Main(string[] args)
     {
         Console.Title = "RANK_CALCULATOR";
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
-        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
-        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+        var (dbMain, regionDbs) = InitializeDatabases();
+        var connection = await CreateRabbitConnection();
 
-        ConfigurationOptions GetRedisOptions(string envVarName)
-        {
-            return new ConfigurationOptions
-            {
-                EndPoints = { Environment.GetEnvironmentVariable(envVarName) },
-                Password = redisPassword,
-            };
-        }
-
-        var redis = ConnectionMultiplexer.Connect(GetRedisOptions("DB_MAIN"));
-        var dbMain = redis.GetDatabase();
-
-        var regionDbs = new Dictionary<string, IDatabase>
-        {
-            ["RU"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_RU")).GetDatabase(),
-            ["EU"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_EU")).GetDatabase(),
-            ["ASIA"] = ConnectionMultiplexer.Connect(GetRedisOptions("DB_ASIA")).GetDatabase(),
-        };
-
-        var factory = new ConnectionFactory
-        {
-            HostName = "localhost",
-            UserName = rabbitUser,
-            Password = rabbitPassword
-        };
-
-        using var connection = await factory.CreateConnectionAsync();
         using var channel = await connection.CreateChannelAsync();
 
         await DeclareTopologyAsync(channel);
@@ -111,6 +83,39 @@ class Program
 
         await channel.BasicConsumeAsync(queue: QueueName, autoAck: false, consumer: consumer);
         await Task.Delay(Timeout.Infinite);
+    }
+
+    private static (IDatabase main, Dictionary<string, IDatabase> regions) InitializeDatabases()
+    {
+        var redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+
+        ConfigurationOptions GetOptions(string envVar) => new ConfigurationOptions
+        {
+            EndPoints = { Environment.GetEnvironmentVariable(envVar) },
+            Password = redisPassword,
+            AbortOnConnectFail = false
+        };
+
+        var main = ConnectionMultiplexer.Connect(GetOptions("DB_MAIN")).GetDatabase();
+        var regions = new Dictionary<string, IDatabase>
+        {
+            ["RU"] = ConnectionMultiplexer.Connect(GetOptions("DB_RU")).GetDatabase(),
+            ["EU"] = ConnectionMultiplexer.Connect(GetOptions("DB_EU")).GetDatabase(),
+            ["ASIA"] = ConnectionMultiplexer.Connect(GetOptions("DB_ASIA")).GetDatabase(),
+        };
+
+        return (main, regions);
+    }
+
+    private static async Task<IConnection> CreateRabbitConnection()
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = Environment.GetEnvironmentVariable("RABBIT_USER"),
+            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD")
+        };
+        return await factory.CreateConnectionAsync();
     }
 
     private static async Task DeclareTopologyAsync(IChannel channel)

@@ -35,40 +35,47 @@ public class SummaryModel : PageModel
         TextId = id;
         _logger.LogDebug(id);
 
-        var dbMain = _redis.GetDatabase();
-
-        string author = await dbMain.StringGetAsync("AUTHOR-" + id);
-
-        if (string.IsNullOrEmpty(author) || author != User.Identity.Name)
+        if (!await IsUserAuthorized(id))
         {
             return Forbid();
         }
 
+        await LoadSummaryData(id);
+
+        return Page();
+    }
+
+    private async Task<bool> IsUserAuthorized(string id)
+    {
+        var dbMain = _redis.GetDatabase();
+        string author = await dbMain.StringGetAsync("AUTHOR-" + id);
+
+        return !string.IsNullOrEmpty(author) && author == User.Identity.Name;
+    }
+
+    private async Task LoadSummaryData(string id)
+    {
+        var dbMain = _redis.GetDatabase();
         string region = await dbMain.StringGetAsync(id);
-        Console.WriteLine($"LOOKUP: {id}, {region}");
 
         if (string.IsNullOrEmpty(region))
         {
             StatusMessage = "Запись не найдена";
-            return Page();
+            return;
         }
-        var dbRegion = _regionProvider.GetDatabase(region);
 
+        var dbRegion = _regionProvider.GetDatabase(region);
         var rankValue = await dbRegion.StringGetAsync("RANK-" + id);
         var similarityValue = await dbRegion.StringGetAsync("SIMILARITY-" + id);
 
         if (rankValue.IsNull)
         {
             StatusMessage = "Оценка содержания не завершена";
-            Rank = null;
-            Similarity = null;
         }
         else
         {
             Rank = Convert.ToDouble(rankValue.ToString().Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
             Similarity = (double)similarityValue;
         }
-
-        return Page();
     }
 }

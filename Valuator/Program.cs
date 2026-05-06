@@ -17,45 +17,9 @@ public class Program
 
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-            .AddCookie(options =>
-            {
-                options.LoginPath = "/Login";
-                options.AccessDeniedPath = "/Forbidden";
-            });
+        ConfigureSecurity(builder);
 
-        builder.Services.AddAuthorization(options =>
-        {
-            options.AddPolicy("AuthorOnly", policy => policy.RequireAuthenticatedUser());
-        });
-
-
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
-        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
-        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
-
-        builder.Services.AddRazorPages();
-        builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>
-        {
-            var dbMain = Environment.GetEnvironmentVariable("DB_MAIN");
-            var config = ConfigurationOptions.Parse(dbMain);
-            config.Password = redisPassword;
-
-            return ConnectionMultiplexer.Connect(config);
-        });
-
-        builder.Services.AddSingleton<IRegionDBProvider, RegionDBProvider>();
-        var factory = new ConnectionFactory { HostName = "localhost",
-            UserName = rabbitUser,
-            Password = rabbitPassword
-        };
-
-        var rabbitConnection = await factory.CreateConnectionAsync();
-
-        builder.Services.AddSingleton<IConnection>(rabbitConnection);
-        builder.Services.AddSingleton<IConnectionFactory>(factory);
-
-        await SetupRabbitMqTopology(rabbitConnection);
+        await ConfigureInfrastructure(builder);
 
         builder.Services.AddSignalR();
         builder.Services.AddHostedService<RankNotifier>();
@@ -73,6 +37,53 @@ public class Program
         app.MapHub<RankHub>("/rankHub");
         app.MapRazorPages();
         app.Run();
+    }
+
+    private static async Task ConfigureInfrastructure(WebApplicationBuilder builder)
+    {
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
+        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+        string dbMain = Environment.GetEnvironmentVariable("DB_MAIN");
+
+        builder.Services.AddRazorPages();
+        builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>
+        {
+            var config = ConfigurationOptions.Parse(dbMain);
+            config.Password = redisPassword;
+            return ConnectionMultiplexer.Connect(config);
+        });
+
+        builder.Services.AddSingleton<IRegionDBProvider, RegionDBProvider>();
+
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = rabbitUser,
+            Password = rabbitPassword
+        };
+
+        var rabbitConnection = await factory.CreateConnectionAsync();
+
+        builder.Services.AddSingleton<IConnection>(rabbitConnection);
+        builder.Services.AddSingleton<IConnectionFactory>(factory);
+
+        await SetupRabbitMqTopology(rabbitConnection);
+    }
+
+    private static void ConfigureSecurity(WebApplicationBuilder builder)
+    {
+        builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/Login";
+                options.AccessDeniedPath = "/Forbidden";
+            });
+
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AuthorOnly", policy => policy.RequireAuthenticatedUser());
+        });
     }
 
     private static async Task SetupRabbitMqTopology(IConnection connection)

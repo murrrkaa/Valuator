@@ -4,6 +4,7 @@ using StackExchange.Redis;
 using RabbitMQ.Client;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using System.Threading.Channels;
 
 namespace Valuator.Pages;
 
@@ -64,26 +65,21 @@ public class IndexModel : PageModel
         string textKey = "TEXT-" + id;
         await dbRegion.StringSetAsync(textKey, text);
 
+        await PublishProcessingEvents(id, similarity);
+
+        return Redirect($"summary?id={id}");
+    }
+
+    private async Task PublishProcessingEvents(string id, int similarity)
+    {
         using var channel = await _rabbitConnection.CreateChannelAsync();
 
         string eventMessage = $"[SimilarityCalculated] ID: {id}, Value: {similarity}";
         var eventBody = Encoding.UTF8.GetBytes(eventMessage);
-
-        await channel.BasicPublishAsync(
-            exchange: ExchangeNameEvents,
-            routingKey: "",
-            body: eventBody
-        );
+        await channel.BasicPublishAsync(exchange: ExchangeNameEvents, routingKey: "", body: eventBody);
 
         var body = Encoding.UTF8.GetBytes(id);
-
-        await channel.BasicPublishAsync(
-            exchange: ExchangeNameRank,
-            routingKey: RoutingKey,
-            body: body
-         );
-
-        return Redirect($"summary?id={id}");
+        await channel.BasicPublishAsync(exchange: ExchangeNameRank, routingKey: RoutingKey, body: body);
     }
 
     private static string GetRegion(string country) => country switch

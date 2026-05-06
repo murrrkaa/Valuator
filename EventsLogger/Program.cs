@@ -12,15 +12,7 @@ class Program
     {
         Console.Title = "EVENTS_LOGGER";
 
-        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
-        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
-
-        var factory = new ConnectionFactory { HostName = "localhost",
-            UserName = rabbitUser,
-            Password = rabbitPassword
-        };
-
-        await using var connection = await factory.CreateConnectionAsync();
+        var connection = await CreateRabbitConnection();
         await using var channel = await connection.CreateChannelAsync();
 
         string queueName = await DeclareTopologyAsync(channel);
@@ -46,6 +38,17 @@ class Program
         await channel.BasicConsumeAsync(queue: queueName, autoAck: false, consumer: consumer);
 
         Console.ReadLine();
+    }
+
+    private static async Task<IConnection> CreateRabbitConnection()
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = Environment.GetEnvironmentVariable("RABBIT_USER"),
+            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD")
+        };
+        return await factory.CreateConnectionAsync();
     }
 
     private static async Task<string> DeclareTopologyAsync(IChannel channel)

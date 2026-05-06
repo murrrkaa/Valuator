@@ -19,27 +19,54 @@ namespace Valuator.Pages
 
         public async Task<IActionResult> OnPostAsync(string login, string password)
         {
-            if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            if (!IsInputValid(login, password))
             {
-                ModelState.AddModelError("", "Введите логин и пароль");
                 return Page();
             }
 
+            var user = await AuthenticateUser(login, password);
+            if (user == null)
+            {
+                return Page();
+            }
+
+            await SignIn(user);
+
+            return RedirectToPage("/Index");
+        }
+
+        private bool IsInputValid(string login, string password)
+        {
+            if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            {
+                ModelState.AddModelError("", "Введите логин и пароль");
+                return false;
+            }
+            return true;
+        }
+
+        private async Task<User?> AuthenticateUser(string login, string password)
+        {
             var userJson = await _db.StringGetAsync($"USER:{login}");
             if (userJson.IsNull)
             {
                 ModelState.AddModelError("", "Пользователь не найден");
-                return Page();
+                return null;
             }
 
             var user = JsonSerializer.Deserialize<User>(userJson);
 
-            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 ModelState.AddModelError("", "Неверный пароль");
-                return Page();
+                return null;
             }
 
+            return user;
+        }
+
+        private async Task SignIn(User user)
+        {
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Login)
@@ -51,8 +78,6 @@ namespace Valuator.Pages
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(claimsIdentity)
             );
-
-            return RedirectToPage("/Index");
         }
     }
 }
