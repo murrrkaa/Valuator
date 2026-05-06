@@ -69,7 +69,7 @@ public class RankNotifier : BackgroundService
             await channel.BasicAckAsync(ea.DeliveryTag, false);
         };
 
-        await channel.BasicConsumeAsync(q.QueueName, autoAck: false, consumer: consumer);
+        await channel.BasicConsumeAsync(queue.QueueName, autoAck: false, consumer: consumer);
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 }
