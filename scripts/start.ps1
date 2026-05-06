@@ -18,7 +18,7 @@ Start-Sleep -Seconds 2
 
 $redisContainers = @("db-main", "db-ru", "db-eu", "db-asia")
 foreach ($container in $redisContainers) {
-    docker exec $container redis-cli CONFIG SET requirepass redis_admin
+    docker exec $container redis-cli CONFIG SET requirepass "$env:REDIS_PASSWORD"
 }
 
 while ($true) {
@@ -35,9 +35,9 @@ while ($true) {
     if ($connection) { 
         $ctl = "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmqctl.bat"
     
-        & $ctl add_user "rabbit_admin" "rabbit_admin" 2>$null
-        & $ctl set_user_tags "rabbit_admin" administrator
-        & $ctl set_permissions -p "/" "rabbit_admin" ".*" ".*" ".*"
+        & $ctl add_user "$env:RABBIT_USER" "$env:RABBIT_PASSWORD" 2>$null
+	& $ctl set_user_tags "$env:RABBIT_USER" administrator
+	& $ctl set_permissions -p "/" "$env:RABBIT_USER" ".*" ".*" ".*"
         break 
 }
     Start-Sleep -Seconds 2
