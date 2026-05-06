@@ -48,7 +48,7 @@ public class SummaryModel : PageModel
     private async Task<bool> IsUserAuthorized(string id)
     {
         var dbMain = _redis.GetDatabase();
-        string author = await dbMain.StringGetAsync("AUTHOR-" + id);
+        string? author = await dbMain.StringGetAsync("AUTHOR-" + id);
 
         return !string.IsNullOrEmpty(author) && author == User.Identity.Name;
     }
@@ -56,7 +56,7 @@ public class SummaryModel : PageModel
     private async Task LoadSummaryData(string id)
     {
         var dbMain = _redis.GetDatabase();
-        string region = await dbMain.StringGetAsync(id);
+        string? region = await dbMain.StringGetAsync(id);
 
         if (string.IsNullOrEmpty(region))
         {

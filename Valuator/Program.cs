@@ -43,7 +43,7 @@ public class Program
         string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? "";
         string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER") ?? "";
         string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD") ?? "";
-        string dbMain = Environment.GetEnvironmentVariable("DB_MAIN");
+        string dbMain = Environment.GetEnvironmentVariable("DB_MAIN") ?? "localhost:6000";
 
         builder.Services.AddRazorPages();
         builder.Services.AddSingleton<IConnectionMultiplexer>((_) =>

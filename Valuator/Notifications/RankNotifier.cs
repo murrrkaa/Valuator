@@ -48,11 +48,11 @@ public class RankNotifier : BackgroundService
             using var doc = JsonDocument.Parse(jsonString);
             var root = doc.RootElement;
 
-            string id = root.GetProperty("Id").GetString();
+            string id = root.GetProperty("Id").GetString() ?? "";
             string rank = root.GetProperty("Value").GetDouble().ToString();
            
             var dbMain = _redis.GetDatabase();
-            string region = await dbMain.StringGetAsync(id);
+            string? region = await dbMain.StringGetAsync(id);
             Console.WriteLine($"LOOKUP: {id}, {region}");
 
             if (string.IsNullOrEmpty(region))
