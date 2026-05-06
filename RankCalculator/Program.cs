@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
@@ -7,7 +8,6 @@ class Program
 {
     private const string QueueName = "valuator.processing.rank";
     private const string ExchangeNameEvents = "valuator.processing.events";
-    private const string ExchangeNameNotification = "valuator.processing.notification";
 
     static async Task Main(string[] args)
     {
@@ -29,7 +29,7 @@ class Program
                 var body = ea.Body.ToArray();
                 var id = Encoding.UTF8.GetString(body);
 
-                string region = await dbMain.StringGetAsync(id);
+                string? region = await dbMain.StringGetAsync(id);
                 Console.WriteLine($"LOOKUP: {id}, {region}");
 
                 if (string.IsNullOrEmpty(region))
@@ -56,17 +56,20 @@ class Program
 
                     await dbRegion.StringSetAsync("RANK-" + id, rank.ToString());
 
-                    string rankEvent = $"[RankCalculated] ID: {id}, Value: {rank}";
-                    var rankBody = Encoding.UTF8.GetBytes(rankEvent);
+                    var eventData = new {
+                        Id = id,
+                        Value = rank,
+                        Message = $"[RankCalculated] ID: {id}, Value: {rank}"
+                    };
+
+                    var json = JsonSerializer.Serialize(eventData);
+                    var bodyMessage = Encoding.UTF8.GetBytes(json);
 
                     await channel.BasicPublishAsync(
                         exchange: ExchangeNameEvents,
                         routingKey: "",
-                        body: rankBody
+                        body: bodyMessage
                     );
-
-                    var notifyBody = Encoding.UTF8.GetBytes(id);
-                    await channel.BasicPublishAsync(exchange: ExchangeNameNotification, routingKey: "", body: notifyBody);
                 }
                 else
                 {
@@ -91,7 +94,7 @@ class Program
 
         ConfigurationOptions GetOptions(string envVar) => new ConfigurationOptions
         {
-            EndPoints = { Environment.GetEnvironmentVariable(envVar) },
+            EndPoints = { Environment.GetEnvironmentVariable(envVar) ?? "localhost" },
             Password = redisPassword,
             AbortOnConnectFail = false
         };
@@ -112,8 +115,8 @@ class Program
         var factory = new ConnectionFactory
         {
             HostName = "localhost",
-            UserName = Environment.GetEnvironmentVariable("RABBIT_USER"),
-            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD")
+            UserName = Environment.GetEnvironmentVariable("RABBIT_USER") ?? "",
+            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD") ?? ""
         };
         return await factory.CreateConnectionAsync();
     }
@@ -131,7 +134,5 @@ class Program
             exclusive: false,
             autoDelete: false
         );
-
-        await channel.ExchangeDeclareAsync(exchange: ExchangeNameNotification, type: ExchangeType.Fanout);
     }
 }

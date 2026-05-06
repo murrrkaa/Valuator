@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -8,7 +9,7 @@ namespace Valuator;
 
 public class RankNotifier : BackgroundService
 {
-    private const string ExchangeNameNotification = "valuator.processing.notification";
+    private const string ExchangeNameEvents = "valuator.processing.events";
     private readonly IHubContext<RankHub> _hub;
     private readonly IConnection _rabbitConnection;
     private readonly IConnectionMultiplexer _redis;
@@ -26,14 +27,30 @@ public class RankNotifier : BackgroundService
     {
         var channel = await _rabbitConnection.CreateChannelAsync();
 
-        var q = await channel.QueueDeclareAsync("", durable: false, exclusive: true, autoDelete: true);
-        await channel.QueueBindAsync(queue: q.QueueName, exchange: ExchangeNameNotification, routingKey: "");
+        var queue = await channel.QueueDeclareAsync(
+            "", 
+            durable: false, 
+            exclusive: true, 
+            autoDelete: true
+        );
+        await channel.QueueBindAsync(
+            queue: queue.QueueName, 
+            exchange: ExchangeNameEvents, 
+            routingKey: ""
+        );
 
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += async (_, ea) =>
         {
-            var id = Encoding.UTF8.GetString(ea.Body.ToArray());
+            var body = ea.Body.ToArray();
+            var jsonString = Encoding.UTF8.GetString(body);
 
+            using var doc = JsonDocument.Parse(jsonString);
+            var root = doc.RootElement;
+
+            string id = root.GetProperty("Id").GetString();
+            string rank = root.GetProperty("Value").GetDouble().ToString();
+           
             var dbMain = _redis.GetDatabase();
             string region = await dbMain.StringGetAsync(id);
             Console.WriteLine($"LOOKUP: {id}, {region}");
@@ -46,8 +63,6 @@ public class RankNotifier : BackgroundService
             }
 
             var dbRegion = _regionProvider.GetDatabase(region);
-
-            var rank = await dbRegion.StringGetAsync("RANK-" + id);
             var similarity = await dbRegion.StringGetAsync("SIMILARITY-" + id);
             await _hub.Clients.Group(id).SendAsync("Receive", id, rank.ToString(), similarity.ToString(), cancellationToken: stoppingToken);
             

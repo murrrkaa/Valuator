@@ -10,7 +10,6 @@ public class Program
     private const string ExchangeNameEvents = "valuator.processing.events";
     private const string QueueName = "valuator.processing.rank";
     private const string RoutingKey = "valuator.processing.rank";
-    private const string ExchangeNameNotification = "valuator.processing.notification";
 
     public static async Task Main(string[] args)
     {
@@ -41,9 +40,9 @@ public class Program
 
     private static async Task ConfigureInfrastructure(WebApplicationBuilder builder)
     {
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
-        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER");
-        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD");
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? "";
+        string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER") ?? "";
+        string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD") ?? "";
         string dbMain = Environment.GetEnvironmentVariable("DB_MAIN");
 
         builder.Services.AddRazorPages();
@@ -90,10 +89,24 @@ public class Program
     {
         using var channel = await connection.CreateChannelAsync();
 
-        await channel.ExchangeDeclareAsync(ExchangeNameRank, ExchangeType.Direct);
-        await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false);
-        await channel.QueueBindAsync(QueueName, ExchangeNameRank, RoutingKey);
-        await channel.ExchangeDeclareAsync(ExchangeNameEvents, ExchangeType.Fanout);
-        await channel.ExchangeDeclareAsync(ExchangeNameNotification, ExchangeType.Fanout);
+        await channel.ExchangeDeclareAsync(
+            ExchangeNameRank, 
+            ExchangeType.Direct
+        );
+        await channel.QueueDeclareAsync(
+            QueueName, 
+            durable: true, 
+            exclusive: false, 
+            autoDelete: false
+        );
+        await channel.QueueBindAsync(
+            QueueName, 
+            ExchangeNameRank, 
+            RoutingKey
+        );
+        await channel.ExchangeDeclareAsync(
+            ExchangeNameEvents, 
+            ExchangeType.Fanout
+        );
     }
 }

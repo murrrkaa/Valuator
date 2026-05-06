@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Channels;
+using System.Text.Json;
 
 namespace Valuator.Pages;
 
@@ -47,8 +48,7 @@ public class IndexModel : PageModel
         }
         string id = Guid.NewGuid().ToString();
         string region = GetRegion(country);
-
-        string author = User.Identity.Name;
+        string author = User.Identity.Name ?? "";
 
         var dbMain = _redis.GetDatabase();
         await dbMain.StringSetAsync("AUTHOR-" + id, author);
@@ -74,12 +74,28 @@ public class IndexModel : PageModel
     {
         using var channel = await _rabbitConnection.CreateChannelAsync();
 
-        string eventMessage = $"[SimilarityCalculated] ID: {id}, Value: {similarity}";
-        var eventBody = Encoding.UTF8.GetBytes(eventMessage);
-        await channel.BasicPublishAsync(exchange: ExchangeNameEvents, routingKey: "", body: eventBody);
+        var similarityEvent = new
+        {
+            Id = id,
+            Value = (double)similarity,
+            Message = $"[SimilarityCalculated] ID: {id}, Value: {similarity}"
+        };
+
+        var eventJson = JsonSerializer.Serialize(similarityEvent);
+        var eventBody = Encoding.UTF8.GetBytes(eventJson);
+
+        await channel.BasicPublishAsync(
+            exchange: ExchangeNameEvents, 
+            routingKey: "", 
+            body: eventBody
+        );
 
         var body = Encoding.UTF8.GetBytes(id);
-        await channel.BasicPublishAsync(exchange: ExchangeNameRank, routingKey: RoutingKey, body: body);
+        await channel.BasicPublishAsync(
+            exchange: ExchangeNameRank, 
+            routingKey: RoutingKey, 
+            body: body
+        );
     }
 
     private static string GetRegion(string country) => country switch

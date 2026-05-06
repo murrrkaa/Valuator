@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -23,9 +24,14 @@ class Program
             try
             {
                 var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
+                var jsonString = Encoding.UTF8.GetString(body);
 
-                Console.WriteLine(message);
+                using var doc = JsonDocument.Parse(jsonString);
+                var root = doc.RootElement;
+
+                string displayMessage = root.GetProperty("Message").GetString() ?? "";
+           
+                Console.WriteLine(displayMessage);
 
                 await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
             }
@@ -45,8 +51,8 @@ class Program
         var factory = new ConnectionFactory
         {
             HostName = "localhost",
-            UserName = Environment.GetEnvironmentVariable("RABBIT_USER"),
-            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD")
+            UserName = Environment.GetEnvironmentVariable("RABBIT_USER") ?? "",
+            Password = Environment.GetEnvironmentVariable("RABBIT_PASSWORD") ?? ""
         };
         return await factory.CreateConnectionAsync();
     }
