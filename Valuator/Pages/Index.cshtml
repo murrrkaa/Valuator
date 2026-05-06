@@ -4,25 +4,33 @@
     ViewData["Title"] = "Главная";
 }
 
-<div class="text-center">
-    <form method="post">
-        <div class="row mb-3" style="display: flex;">
-            <div class="col-2 ml-3">Страна гражданства:</div>
-            <div class="col-3">
-                <select name="country" class="form-control" required>
-                    <option value="" disabled selected>Выберите страну: </option>
-                    <option value="Russia">Russia</option>
-                    <option value="France">France</option>
-                    <option value="Germany">Germany</option>
-                    <option value="UAE">UAE</option>
-                    <option value="India">India</option>
-                </select>
+<div class="container">
+    <div class="text-center">
+        <form method="post">
+            <div class="row mb-3" style="display: flex;">
+                <div class="col-2" style="margin-left: 20px">Страна гражданства:</div>
+                <div class="col-3">
+                    <select name="country" class="form-control" required>
+                        <option value="" disabled selected>Выберите страну: </option>
+                        <option value="Russia">Russia</option>
+                        <option value="France">France</option>
+                        <option value="Germany">Germany</option>
+                        <option value="UAE">UAE</option>
+                        <option value="India">India</option>
+                    </select>
+                </div>
             </div>
-        </div>
-        <div class="col-2">Текст для оценки:</div>
-        <div class="col-10">
-            <textarea name="text" rows="5" cols="50"></textarea>
-            <input type="submit" />
-        </div>
-    </form>
+            <div class="col-2">Текст для оценки:</div>
+            <div class="col-10">
+                <textarea name="text" rows="5" cols="50"></textarea>
+                <input type="submit" />
+            </div>
+        </form>
+    </div>
+    <div class="row justify-content-end mt-auto">
+        <form method="post" asp-page-handler="Logout">
+            <button type="submit" class="btn btn-outline-danger btn-sm">Выйти</button>
+        </form>
+    </div>
 </div>
+

@@ -6,6 +6,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Channels;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 
 namespace Valuator.Pages;
 
@@ -107,4 +109,11 @@ public class IndexModel : PageModel
         "India" => "ASIA",
         _ => throw new ArgumentException($"Unknown country: {country}")
     };
+
+    public async Task<IActionResult> OnPostLogoutAsync()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return RedirectToPage("/Login");
+    }
 }
