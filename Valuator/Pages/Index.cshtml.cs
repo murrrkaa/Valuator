@@ -48,7 +48,7 @@ public class IndexModel : PageModel
         }
         string id = Guid.NewGuid().ToString();
         string region = GetRegion(country);
-        string? author = User.Identity.Name ?? "";
+        string? author = User?.Identity?.Name ?? "";
 
         var dbMain = _redis.GetDatabase();
         await dbMain.StringSetAsync("AUTHOR-" + id, author);

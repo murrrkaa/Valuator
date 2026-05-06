@@ -14,7 +14,7 @@ public class RegionDBProvider : IRegionDBProvider
 
     public RegionDBProvider()
     {
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+        string? redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
 
         var regionConfigs = new Dictionary<string, string>
         {
@@ -25,7 +25,7 @@ public class RegionDBProvider : IRegionDBProvider
 
         foreach (var config in regionConfigs)
         {
-            string host = Environment.GetEnvironmentVariable(config.Value);
+            string? host = Environment.GetEnvironmentVariable(config.Value);
 
             if (!string.IsNullOrEmpty(host))
             {

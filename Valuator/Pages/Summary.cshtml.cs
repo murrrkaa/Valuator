@@ -50,7 +50,7 @@ public class SummaryModel : PageModel
         var dbMain = _redis.GetDatabase();
         string? author = await dbMain.StringGetAsync("AUTHOR-" + id);
 
-        return !string.IsNullOrEmpty(author) && author == User.Identity.Name;
+        return !string.IsNullOrEmpty(author) && author == User?.Identity?.Name;
     }
 
     private async Task LoadSummaryData(string id)
