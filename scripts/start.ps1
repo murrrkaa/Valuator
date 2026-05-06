@@ -1,3 +1,12 @@
+$env:DB_MAIN = "localhost:6000"
+$env:DB_RU = "localhost:6001"
+$env:DB_EU = "localhost:6002"
+$env:DB_ASIA = "localhost:6003"
+
+$env:REDIS_PASSWORD = "redis_admin"
+$env:RABBIT_USER = "rabbit_admin"
+$env:RABBIT_PASSWORD = "rabbit_admin"
+
 $ports = @(5001, 5002, 5003, 5004)
 $workerCount = 2
 
