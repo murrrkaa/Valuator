@@ -79,10 +79,7 @@ public class Program
                 options.AccessDeniedPath = "/Forbidden";
             });
 
-        builder.Services.AddAuthorization(options =>
-        {
-            options.AddPolicy("AuthorOnly", policy => policy.RequireAuthenticatedUser());
-        });
+        builder.Services.AddAuthorization();
     }
 
     private static async Task SetupRabbitMqTopology(IConnection connection)

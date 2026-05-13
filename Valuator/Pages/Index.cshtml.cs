@@ -54,6 +54,7 @@ public class IndexModel : PageModel
 
         var dbMain = _redis.GetDatabase();
         await dbMain.StringSetAsync("AUTHOR-" + id, author);
+
         await dbMain.StringSetAsync(id, region);
         var dbRegion = _regionProvider.GetDatabase(region);
 

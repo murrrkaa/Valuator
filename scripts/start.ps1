@@ -3,7 +3,11 @@ $env:DB_RU = "localhost:6001"
 $env:DB_EU = "localhost:6002"
 $env:DB_ASIA = "localhost:6003"
 
-$env:REDIS_PASSWORD = "redis_admin"
+$env:REDIS_PASSWORD_MAIN = "redis_admin_main"
+$env:REDIS_PASSWORD_RU = "redis_admin_ru"
+$env:REDIS_PASSWORD_EU = "redis_admin_eu"
+$env:REDIS_PASSWORD_ASIA = "redis_admin_asia"
+
 $env:RABBIT_USER = "rabbit_admin"
 $env:RABBIT_PASSWORD = "rabbit_admin"
 
@@ -16,9 +20,15 @@ docker start db-main db-ru db-eu db-asia
 
 Start-Sleep -Seconds 2
 
-$redisContainers = @("db-main", "db-ru", "db-eu", "db-asia")
+$redisContainers = @(
+@{Container = "db-main", Password = "$env:REDIS_PASSWORD_MAIN"},
+@{Container = "db-ru", Password = "$env:REDIS_PASSWORD_RU"},
+@{Container = "db-eu", Password = "$env:REDIS_PASSWORD_EU"},
+@{Container = "db-asia", Password = "$env:REDIS_PASSWORD_ASIA"}
+)
+
 foreach ($container in $redisContainers) {
-    docker exec $container redis-cli CONFIG SET requirepass "$env:REDIS_PASSWORD"
+    docker exec $container.Container redis-cli CONFIG SET requirepass $container.Password
 }
 
 while ($true) {
