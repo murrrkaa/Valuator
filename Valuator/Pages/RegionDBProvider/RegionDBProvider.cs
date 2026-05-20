@@ -14,23 +14,24 @@ public class RegionDBProvider : IRegionDBProvider
 
     public RegionDBProvider()
     {
-        string? redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
-
-        var regionConfigs = new Dictionary<string, string>
+        var regionConfigs = new Dictionary<string, (string HostVar, string PasswordVar)>
         {
-            { "RU", "DB_RU" },
-            { "EU", "DB_EU" },
-            { "ASIA", "DB_ASIA" }
+            { "RU",   ("DB_RU",   "REDIS_PASSWORD_RU") },
+            { "EU",   ("DB_EU",   "REDIS_PASSWORD_EU") },
+            { "ASIA", ("DB_ASIA", "REDIS_PASSWORD_ASIA") }
         };
 
         foreach (var config in regionConfigs)
         {
-            string? host = Environment.GetEnvironmentVariable(config.Value);
+            string? host = Environment.GetEnvironmentVariable(config.Value.HostVar);
+            string? password = Environment.GetEnvironmentVariable(config.Value.PasswordVar);
 
             if (!string.IsNullOrEmpty(host))
             {
                 var options = ConfigurationOptions.Parse(host);
-                options.Password = redisPassword;
+                options.Password = password;
+                options.AbortOnConnectFail = false;
+
                 _connections[config.Key] = ConnectionMultiplexer.Connect(options);
             }
         }

@@ -1,0 +1,14 @@
+﻿@page "{statusCode?}"
+@model Valuator.Pages.ClientErrorModel
+@{
+    ViewData["Title"] = Model.ErrorTitle;
+}
+
+<div class="text-center mt-5">
+    <h1 class="display-1 text-danger font-weight-bold">@Model.ErrorCode</h1>
+    <h2 class="h3 text-secondary mb-3">@Model.ErrorTitle</h2>
+    <p class="lead text-muted">@Model.ErrorMessage</p>
+    <p>
+        <a href="/" class="btn btn-primary px-4">Return to Home</a>
+    </p>
+</div>

@@ -90,21 +90,19 @@ class Program
 
     private static (IDatabase main, Dictionary<string, IDatabase> regions) InitializeDatabases()
     {
-        var redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
-
-        ConfigurationOptions GetOptions(string envVar) => new ConfigurationOptions
+        ConfigurationOptions GetOptions(string hostEnvVar, string passwordEnvVar) => new ConfigurationOptions
         {
-            EndPoints = { Environment.GetEnvironmentVariable(envVar) ?? "localhost" },
-            Password = redisPassword,
+            EndPoints = { Environment.GetEnvironmentVariable(hostEnvVar) ?? "localhost" },
+            Password = Environment.GetEnvironmentVariable(passwordEnvVar),
             AbortOnConnectFail = false
         };
 
-        var main = ConnectionMultiplexer.Connect(GetOptions("DB_MAIN")).GetDatabase();
+        var main = ConnectionMultiplexer.Connect(GetOptions("DB_MAIN", "REDIS_PASSWORD_MAIN")).GetDatabase();
         var regions = new Dictionary<string, IDatabase>
         {
-            ["RU"] = ConnectionMultiplexer.Connect(GetOptions("DB_RU")).GetDatabase(),
-            ["EU"] = ConnectionMultiplexer.Connect(GetOptions("DB_EU")).GetDatabase(),
-            ["ASIA"] = ConnectionMultiplexer.Connect(GetOptions("DB_ASIA")).GetDatabase(),
+            ["RU"] = ConnectionMultiplexer.Connect(GetOptions("DB_RU", "REDIS_PASSWORD_RU")).GetDatabase(),
+            ["EU"] = ConnectionMultiplexer.Connect(GetOptions("DB_EU", "REDIS_PASSWORD_EU")).GetDatabase(),
+            ["ASIA"] = ConnectionMultiplexer.Connect(GetOptions("DB_ASIA", "REDIS_PASSWORD_ASIA")).GetDatabase(),
         };
 
         return (main, regions);

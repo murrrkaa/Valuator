@@ -13,23 +13,11 @@ $env:RABBIT_PASSWORD = "rabbit_admin"
 
 $ports = @(5001, 5002, 5003, 5004)
 $workerCount = 2
+$loggerCount = 2
 
 start-process "nginx.exe" -WorkingDirectory "C:\nginx\"
 
 docker start db-main db-ru db-eu db-asia
-
-Start-Sleep -Seconds 2
-
-$redisContainers = @(
-@{Container = "db-main", Password = "$env:REDIS_PASSWORD_MAIN"},
-@{Container = "db-ru", Password = "$env:REDIS_PASSWORD_RU"},
-@{Container = "db-eu", Password = "$env:REDIS_PASSWORD_EU"},
-@{Container = "db-asia", Password = "$env:REDIS_PASSWORD_ASIA"}
-)
-
-foreach ($container in $redisContainers) {
-    docker exec $container.Container redis-cli CONFIG SET requirepass $container.Password
-}
 
 while ($true) {
     $redisCheck = Test-NetConnection -ComputerName localhost -Port 6000 -InformationLevel Quiet
@@ -46,10 +34,10 @@ while ($true) {
         $ctl = "C:\RabbitMQ\rabbitmq_server-4.2.5\sbin\rabbitmqctl.bat"
     
         & $ctl add_user "$env:RABBIT_USER" "$env:RABBIT_PASSWORD" 2>$null
-	& $ctl set_user_tags "$env:RABBIT_USER" administrator
-	& $ctl set_permissions -p "/" "$env:RABBIT_USER" ".*" ".*" ".*"
+        & $ctl set_user_tags "$env:RABBIT_USER" administrator
+        & $ctl set_permissions -p "/" "$env:RABBIT_USER" ".*" ".*" ".*"
         break 
-}
+    }
     Start-Sleep -Seconds 2
 }
 
@@ -57,11 +45,8 @@ for ($i = 1; $i -le $workerCount; $i++) {
     Start-Process dotnet -ArgumentList "run --verbosity quiet" -WorkingDirectory "$PSScriptRoot\..\RankCalculator"
 }
 
-
-$loggerCount = 2
 for ($i = 1; $i -le $loggerCount; $i++) {
     Start-Process dotnet -ArgumentList "run --verbosity quiet" -WorkingDirectory "$PSScriptRoot\..\EventsLogger"
-
 }
 
 foreach ($port in $ports) 

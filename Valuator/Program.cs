@@ -40,7 +40,7 @@ public class Program
 
     private static async Task ConfigureInfrastructure(WebApplicationBuilder builder)
     {
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? "";
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD_MAIN") ?? "";
         string rabbitUser = Environment.GetEnvironmentVariable("RABBIT_USER") ?? "";
         string rabbitPassword = Environment.GetEnvironmentVariable("RABBIT_PASSWORD") ?? "";
         string dbMain = Environment.GetEnvironmentVariable("DB_MAIN") ?? "localhost:6000";
@@ -76,7 +76,7 @@ public class Program
             .AddCookie(options =>
             {
                 options.LoginPath = "/Login";
-                options.AccessDeniedPath = "/Forbidden";
+                options.AccessDeniedPath = "/ClientError/403";
             });
 
         builder.Services.AddAuthorization();
